@@ -106,40 +106,23 @@ def rwh_primes2(n):
     return [2, 3] + [3*i+1 | 1 for i in range(1, n/3-correction) if sieve[i]]
 
 
-def multiply(x, y):
-    _CUTOFF = 1536
-    if x.bit_length() <= _CUTOFF or y.bit_length() <= _CUTOFF:  # Base case
-        return x * y
-    else:
-        n = max(x.bit_length(), y.bit_length())
-        half = (n + 32) // 64 * 32
-        mask = (1 << half) - 1
-        xlow = x & mask
-        ylow = y & mask
-        xhigh = x >> half
-        yhigh = y >> half
-
-        a = multiply(xhigh, yhigh)
-        b = multiply(xlow + xhigh, ylow + yhigh)
-        c = multiply(xlow, ylow)
-        d = b - a - c
-        return (((a << half) + d) << half) + c
-
-
 def generate_keypair(keySize=10):
+    
     p = generateLargePrime(keySize)
     print(p)
     q = generateLargePrime(keySize)
     print(q)
-
-    if p == q:
-        raise ValueError('p and q cannot be equal')
+    while(p == q):
+        p = generateLargePrime(keySize)
+        print(p)
+        q = generateLargePrime(keySize)
+        print(q)
 
     # n = pq
-    n = multiply(p, q)
+    n = p * q
 
     # Phi is the totient of n
-    phi = multiply((p-1), (q-1))
+    phi = (p-1) * (q-1)
 
     # Choose an integer e such that e and phi(n) are coprime
     e = secure_rng.randrange(1, phi)
