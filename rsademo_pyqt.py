@@ -193,6 +193,13 @@ class RSADemoChatApp(QWidget):
         keyLayout.addWidget(privateKeyLabel, 0, 2)
         keyLayout.addWidget(self.privateKeyField, 0, 3)
 
+        # Add a text field for specifiying the key size
+        keySizeLabel = QLabel("Keysize: ")
+        self.keySizeField = QLineEdit(self)
+        self.keySizeField.setText(str(32))
+        keyLayout.addWidget(keySizeLabel, 1, 0)
+        keyLayout.addWidget(self.keySizeField, 1, 1)
+
         # Add the generate key button
         generateKeysButton = QPushButton('Generate Keys', self)
         generateKeysButton.clicked.connect(self.generate_keypair_ev)
@@ -241,7 +248,7 @@ class RSADemoChatApp(QWidget):
     @pyqtSlot()
     def generate_keypair_ev(self):
         print("Generating your public/private keypairs now . . .")
-        publicKey, privateKey = generate_keypair()
+        publicKey, privateKey = generate_keypair(int(self.keySizeField.text()))
         # Index 1 should be the public key text field
         self.publicKeyField.setText(str(publicKey))
         # Index 3 should be the private key text field
