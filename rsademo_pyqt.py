@@ -4,8 +4,9 @@ Based on https://gist.github.com/JonCooperWorks/5314103
 import secrets
 import sys
 import math
+import struct
 from PyQt5.Qt import QApplication, QClipboard
-from PyQt5 import QtCore, QtWidgets
+from PyQt5 import QtCore, QtWidgets, QtGui
 from PyQt5.QtWidgets import QMainWindow, QWidget, QLineEdit, QLabel, QPlainTextEdit, QPushButton, QDesktopWidget, QGroupBox, QGridLayout, QHBoxLayout, QVBoxLayout
 from PyQt5.QtCore import QSize, pyqtSlot
 
@@ -23,7 +24,7 @@ def isPrime(n, k=10):
         x = pow(a, d, n)
         if x == 1:
             return True
-        for i in range(1, s - 1):
+        for _ in range(1, s - 1):
             if x == n - 1:
                 return True
             x = pow(x, 2, n)
@@ -36,14 +37,15 @@ def isPrime(n, k=10):
         d >>= 1
         s += 1
 
-    for i in range(1, k):
+    for _ in range(1, k):
         a = secure_rng.randrange(2, n - 1)
         if not check(a, s, d, n):
             return False
     return True
 
-def generateLargePrime(k):
-    # k is the desired bit length
+
+def generateLargePrime(k=10):
+    # k is the desired bit length (binary bits that is)
     r = 100 * (math.log(k, 2) + 1)  # number of attempts max
     r_ = r
     while r > 0:
@@ -55,7 +57,6 @@ def generateLargePrime(k):
     str_failure = "Failure after" + str(r_) + "tries."
     return str_failure
 
-
 def gcd(a, b):
     '''
     Euclid's algorithm for determining the greatest common divisor
@@ -64,6 +65,7 @@ def gcd(a, b):
     while b != 0:
         a, b = b, a % b
     return a
+
 
 def multiplicative_inverse(a, b):
     """Returns a tuple (r, i, j) such that r = gcd(a, b) = ia + jb
@@ -90,28 +92,12 @@ def multiplicative_inverse(a, b):
     # return a , lx, ly  # Return only positive values
     return lx
 
-def rwh_primes2(n):
-    # https://stackoverflow.com/questions/2068372/fastest-way-to-list-all-primes-below-n-in-python/3035188#3035188
-    """ Input n>=6, Returns a list of primes, 2 <= p < n """
-    correction = (n % 6 > 1)
-    n = {0: n, 1: n-1, 2: n+4, 3: n+3, 4: n+2, 5: n+1}[n % 6]
-    sieve = [True] * (n/3)
-    sieve[0] = False
-    for i in range(int(n**0.5)/3+1):
-        if sieve[i]:
-            k = 3*i+1 | 1
-            sieve[((k*k)/3)::2*k] = [False]*((n/6-(k*k)/6-1)/k+1)
-            sieve[(k*k+4*k-2*k*(i & 1))/3::2*k] = [False] * \
-                ((n/6-(k*k+4*k-2*k*(i & 1))/6-1)/k+1)
-    return [2, 3] + [3*i+1 | 1 for i in range(1, n/3-correction) if sieve[i]]
-
-
-def generate_keypair(keySize=10):
-    
+# Default keysize is 32bits for demo purposes. In the real world, key size would be at least 2048bits.
+def generate_keypair(keySize=32): 
     p = generateLargePrime(keySize)
-    print(p)
+    print("p =", p)
     q = generateLargePrime(keySize)
-    print(q)
+    print("q =", q)
     while(p == q):
         p = generateLargePrime(keySize)
         print(p)
@@ -147,9 +133,9 @@ def encrypt(pk, plaintext):
     key, n = pk
     # Convert each letter in the plaintext to numbers based on the character using a^b mod m
     cipher = [pow(ord(char), key, n) for char in plaintext]
+
     # Return the array of bytes
     return cipher
-
 
 def decrypt(pk, ciphertext):
     # Unpack the key into its components
@@ -159,10 +145,10 @@ def decrypt(pk, ciphertext):
     # Return the array of bytes as a string
     return "".join(plain)
 
-"""
+"""""""""""""""""""""""""""""""""""""""
 GUI CODE --- IRRELEVANT TO DEMO
-"""
-class App(QWidget):
+"""""""""""""""""""""""""""""""""""""""
+class RSADemoChatApp(QWidget):
     def __init__(self):
         super().__init__()
         self.title = 'RSA Message Encyption & Decryption demo app'
@@ -171,14 +157,14 @@ class App(QWidget):
         self.width = 720
         self.height = 480
         self.initUI()
- 
+
     def initUI(self):
         self.setWindowTitle(self.title)
 
         self.setGeometry(self.left, self.top, self.width, self.height)
- 
+
         self.createGridLayout()
- 
+
         self.windowLayout = QVBoxLayout()
         self.windowLayout.addWidget(self.horizontalGroupBox)
         self.setLayout(self.windowLayout)
@@ -188,30 +174,30 @@ class App(QWidget):
     def createGridLayout(self):
         self.horizontalGroupBox = QGroupBox()
         self.layout = QGridLayout()
-        
+
         """
         Add UI elements below
         """
         # Create a separate layout to group the private/public key UI elements
-        self.keyLayout = QGridLayout()
+        keyLayout = QGridLayout()
 
         # Add the public key display field
         publicKeyLabel = QLabel("Public Key: ")
-        publicKeyField = QLineEdit(self)
-        self.keyLayout.addWidget(publicKeyLabel, 0, 0)
-        self.keyLayout.addWidget(publicKeyField, 0, 1)
+        self.publicKeyField = QLineEdit(self)
+        keyLayout.addWidget(publicKeyLabel, 0, 0)
+        keyLayout.addWidget(self.publicKeyField, 0, 1)
 
         # Add the private key display field
         privateKeyLabel = QLabel("Private Key: ")
-        privateKeyField = QLineEdit(self)
-        self.keyLayout.addWidget(privateKeyLabel, 0, 2)
-        self.keyLayout.addWidget(privateKeyField, 0, 3)
+        self.privateKeyField = QLineEdit(self)
+        keyLayout.addWidget(privateKeyLabel, 0, 2)
+        keyLayout.addWidget(self.privateKeyField, 0, 3)
 
         # Add the generate key button
         generateKeysButton = QPushButton('Generate Keys', self)
         generateKeysButton.clicked.connect(self.generate_keypair_ev)
         generateKeysButton.setToolTip('Generates a Public/Private RSA Keypair')
-        self.keyLayout.addWidget(generateKeysButton, 0, 4)
+        keyLayout.addWidget(generateKeysButton, 0, 4)
 
         # Add the input text field
         self.messageInputField = QPlainTextEdit(self)
@@ -232,36 +218,36 @@ class App(QWidget):
         decryptButton.setToolTip('Decrypts a message encrypted by the RSA algorithm')
 
         # Add everything to the grid layout (so the items display)
-        self.layout.addLayout(self.keyLayout, 0, 0)
-        self.layout.addWidget(self.messageInputField, 1, 0) 
+        self.layout.addLayout(keyLayout, 0, 0)
+        self.layout.addWidget(self.messageInputField, 1, 0)
         self.layout.addWidget(encryptButton, 1, 1)
         self.layout.addWidget(self.messageOutputField, 2, 0)
         self.layout.addWidget(decryptButton, 2, 1)
- 
+
         self.horizontalGroupBox.setLayout(self.layout)
 
     @pyqtSlot()
     def encrypt_ev(self):
-        # TODO: Make this work regarless of whether we have previously encrypted a message.
-        self.encrypted_msg = encrypt(self.privateKey, self.messageInputField.toPlainText())
-        self.messageOutputField.setPlainText("".join(map(lambda x: str(x), self.encrypted_msg)))
+        privateKey = [int (i) for i in self.privateKeyField.text().strip("()").split(",")]
+        encrypted_msg = encrypt(privateKey, self.messageInputField.toPlainText())
+        self.messageOutputField.setPlainText(" ".join(map(lambda x: str(x), encrypted_msg)))
 
     @pyqtSlot()
     def decrypt_ev(self):
-        decrypted_msg = decrypt(self.publicKey, self.encrypted_msg)
+        publicKey = [int (i) for i in self.publicKeyField.text().strip("()").split(",")]
+        decrypted_msg = decrypt(publicKey, [int(i) for i in self.messageInputField.toPlainText().split(" ")])
         self.messageOutputField.setPlainText(str(decrypted_msg))
 
     @pyqtSlot()
     def generate_keypair_ev(self):
         print("Generating your public/private keypairs now . . .")
-        self.publicKey, self.privateKey = generate_keypair()
-        
+        publicKey, privateKey = generate_keypair()
         # Index 1 should be the public key text field
-        self.keyLayout.itemAt(1).widget().setText(str(self.publicKey))
+        self.publicKeyField.setText(str(publicKey))
         # Index 3 should be the private key text field
-        self.keyLayout.itemAt(3).widget().setText(str(self.privateKey))
- 
+        self.privateKeyField.setText(str(privateKey))
+
 if __name__ == '__main__':
     app = QApplication(sys.argv)
-    ex = App()
+    ex = RSADemoChatApp()
     sys.exit(app.exec_())
